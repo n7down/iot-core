@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
-	MQTT "github.com/eclipse/paho.mqtt.golang"
+	mqtt "github.com/eclipse/paho.mqtt.golang"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -16,28 +18,45 @@ const (
 	registryID         = "demo-registry"
 	gatewayID          = "demo-gateway0"
 	cloudRegion        = "us-central1"
-	privateKeyFile     = "../../rsa_private.pem"
+	privateKeyFile     = "rsa_private.pem"
+	publicKeyFile      = "rsa_cert.pem"
 	algorithm          = "RS256"
-	caCerts            = "../../roots.pem"
-	mqttBridgeHostname = "mqtt.googleapis.com"
+	mqttBridgeHostname = "tls://mqtt.googleapis.com"
 	mqttBridgePort     = "8883"
 	jwtExpiresMinutes  = 1200
+	protocolVersion    = 4
 )
-
-//define a function for the default message handler
-var f MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message) {
-	fmt.Printf("TOPIC: %s\n", msg.Topic())
-	fmt.Printf("MSG: %s\n", msg.Payload())
-}
 
 func main() {
 	log.SetReportCaller(true)
 
+	c := make(chan os.Signal)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+
+	// onConnect defines the on connect handler which resets backoff variables.
+	var onConnect mqtt.OnConnectHandler = func(client mqtt.Client) {
+		log.Info(fmt.Sprintf("Client connected %s:%s: %t\n", mqttBridgeHostname, mqttBridgePort, client.IsConnected()))
+	}
+
+	// onMessage defines the message handler for the mqtt client.
+	var onMessage mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
+		log.Info(fmt.Sprintf("Topic: %s Message: %s\n", msg.Topic(), msg.Payload()))
+	}
+
+	// onDisconnect defines the connection lost handler for the mqtt client.
+	var onDisconnect mqtt.ConnectionLostHandler = func(client mqtt.Client, err error) {
+		log.Info("Client disconnected")
+	}
+
 	signBytes, err := ioutil.ReadFile(privateKeyFile)
-	log.Fatal(err)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	signKey, err := jwt.ParseRSAPrivateKeyFromPEM(signBytes)
-	log.Fatal(err)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// Declare the token with the algorithm used for signing, and the claims
 	t := jwt.New(jwt.GetSigningMethod(algorithm))
@@ -47,45 +66,39 @@ func main() {
 		Audience:  projectID,
 	}
 
-	tokenString, err := t.SignedString(signKey)
-	log.Fatal(err)
+	jwt, err := t.SignedString(signKey)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	//create a ClientOptions struct setting the broker address, clientid, turn
-	//off trace output and set the default message handler
-	opts := MQTT.NewClientOptions().AddBroker(fmt.Sprintf("%s:%s", mqttBridgeHostname, mqttBridgePort))
-	opts.SetClientID("go-simple")
+	clientID := fmt.Sprintf("projects/%s/locations/%s/registries/%s/devices/%s", projectID, cloudRegion, registryID, gatewayID)
+
+	opts := mqtt.NewClientOptions()
+	opts.AddBroker(fmt.Sprintf("%s:%s", mqttBridgeHostname, mqttBridgePort))
+	opts.SetClientID(clientID)
 	opts.SetUsername("unused")
-	opts.SetPassword(tokenString)
-	opts.SetDefaultPublishHandler(f)
+	opts.SetPassword(jwt)
+	opts.SetProtocolVersion(protocolVersion)
+	opts.SetOnConnectHandler(onConnect)
+	opts.SetDefaultPublishHandler(onMessage)
+	opts.SetConnectionLostHandler(onDisconnect)
 
-	//create and start a client using the above ClientOptions
-	c := MQTT.NewClient(opts)
-	if token := c.Connect(); token.Wait() && token.Error() != nil {
-		panic(token.Error())
-	}
-
-	//subscribe to the topic /go-mqtt/sample and request messages to be delivered
-	//at a maximum qos of zero, wait for the receipt to confirm the subscription
-	if token := c.Subscribe("go-mqtt/sample", 0, nil); token.Wait() && token.Error() != nil {
-		fmt.Println(token.Error())
-		os.Exit(1)
-	}
-
-	//Publish 5 messages to /go-mqtt/sample at qos 1 and wait for the receipt
-	//from the server after sending each message
-	for i := 0; i < 5; i++ {
-		text := fmt.Sprintf("this is msg #%d!", i)
-		token := c.Publish("go-mqtt/sample", 0, false, text)
-		token.Wait()
+	// Create and connect a client using the above options.
+	client := mqtt.NewClient(opts)
+	if token := client.Connect(); token.Wait() && token.Error() != nil {
+		log.Fatal(fmt.Sprintf("Failed to connect client: %s", token.Error()))
 	}
 
 	time.Sleep(3 * time.Second)
 
-	//unsubscribe from /go-mqtt/sample
-	if token := c.Unsubscribe("go-mqtt/sample"); token.Wait() && token.Error() != nil {
-		fmt.Println(token.Error())
-		os.Exit(1)
+	gatewayTopic := fmt.Sprintf("/devices/%s/commands/#", gatewayID)
+	if token := client.Subscribe(gatewayTopic, 0, nil); token.Wait() && token.Error() != nil {
+		log.Fatal(fmt.Sprintf("Failed to connect to topic: %s", token.Error()))
 	}
+	log.Info(fmt.Sprintf("Connected to topic: %s", gatewayTopic))
 
-	c.Disconnect(250)
+	<-c
+
+	log.Info(fmt.Sprintf("Disconnecting from: %s:%s", mqttBridgeHostname, mqttBridgePort))
+	client.Disconnect(10)
 }
