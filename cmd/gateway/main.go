@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"net"
 	"os"
 	"os/signal"
 	"syscall"
@@ -97,7 +98,19 @@ func main() {
 	}
 	log.Info(fmt.Sprintf("Connected to topic: %s", gatewayTopic))
 
-	<-c
+	ServerConn, _ := net.ListenUDP("udp", &net.UDPAddr{IP: []byte{0, 0, 0, 0}, Port: 10001, Zone: ""})
+	defer ServerConn.Close()
+
+	buf := make([]byte, 1024)
+	for {
+		select {
+		case <-c:
+			break
+		default:
+			n, addr, _ := ServerConn.ReadFromUDP(buf)
+			log.Info(fmt.Sprintf("Received %s from %s", string(buf[0:n]), addr))
+		}
+	}
 
 	log.Info(fmt.Sprintf("Disconnecting from: %s:%s", mqttBridgeHostname, mqttBridgePort))
 	client.Disconnect(10)
