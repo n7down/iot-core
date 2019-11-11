@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"time"
 
@@ -13,7 +14,7 @@ import (
 const (
 	projectID          = "iota-3345"
 	registryID         = "demo-registry"
-	gatewayID          = "gateway0"
+	gatewayID          = "demo-gateway0"
 	cloudRegion        = "us-central1"
 	privateKeyFile     = "../../rsa_private.pem"
 	algorithm          = "RS256"
@@ -32,24 +33,22 @@ var f MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message) {
 func main() {
 	log.SetReportCaller(true)
 
-	jwtKey := []byte("AllYourBase")
+	signBytes, err := ioutil.ReadFile(privateKeyFile)
+	log.Fatal(err)
 
-	// Create the JWT claims, which includes the username and expiry time
-	claims := jwt.StandardClaims{
+	signKey, err := jwt.ParseRSAPrivateKeyFromPEM(signBytes)
+	log.Fatal(err)
+
+	// Declare the token with the algorithm used for signing, and the claims
+	t := jwt.New(jwt.GetSigningMethod(algorithm))
+	t.Claims = jwt.StandardClaims{
 		IssuedAt:  time.Now().Unix(),
 		ExpiresAt: time.Now().Add(jwtExpiresMinutes * time.Minute).Unix(),
 		Audience:  projectID,
 	}
 
-	// Declare the token with the algorithm used for signing, and the claims
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
-	// Create the JWT string
-	tokenString, err := token.SignedString(jwtKey)
-	if err != nil {
-		log.Error(err.Error())
-		return
-	}
+	tokenString, err := t.SignedString(signKey)
+	log.Fatal(err)
 
 	//create a ClientOptions struct setting the broker address, clientid, turn
 	//off trace output and set the default message handler
