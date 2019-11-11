@@ -6,3 +6,5 @@
  - [MQTT Bridge](https://cloud.google.com/iot/docs/how-tos/gateways/mqtt-bridge)
 3. [ ] Send and receive command from IOT core to device
  - [Commands](https://cloud.google.com/iot/docs/how-tos/commands)
+4. [ ] Send info logs to stackdriver - seperate by site
+5. [ ] Send command to device to send logs of what gateway it is attached to
