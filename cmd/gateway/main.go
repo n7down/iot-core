@@ -1,9 +1,10 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io/ioutil"
-	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -11,7 +12,12 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
+	"github.com/n7down/iot-core/internal/gateway"
 	log "github.com/sirupsen/logrus"
+)
+
+var (
+	addr = flag.String("addr", ":8080", "http service address")
 )
 
 const (
@@ -29,6 +35,7 @@ const (
 )
 
 func main() {
+	flag.Parse()
 	log.SetReportCaller(true)
 
 	c := make(chan os.Signal)
@@ -98,20 +105,38 @@ func main() {
 	}
 	log.Info(fmt.Sprintf("Connected to topic: %s", gatewayTopic))
 
-	ServerConn, _ := net.ListenUDP("udp", &net.UDPAddr{IP: []byte{0, 0, 0, 0}, Port: 10001, Zone: ""})
-	defer ServerConn.Close()
+	time.Sleep(3 * time.Millisecond)
 
-	buf := make([]byte, 1024)
-	for {
-		select {
-		case <-c:
-			break
-		default:
-			n, addr, _ := ServerConn.ReadFromUDP(buf)
-			log.Info(fmt.Sprintf("Received %s from %s", string(buf[0:n]), addr))
-		}
+	//serverConn, err := net.ListenUDP("udp", &net.UDPAddr{IP: []byte{0, 0, 0, 0}, Port: udpPort, Zone: ""})
+	//if err != nil {
+	//log.Fatal(fmt.Sprintf("Failed to create UDP connection: %v", err))
+	//}
+	//log.Info(fmt.Sprintf("UPD connection port: %d", udpPort))
+	//defer serverConn.Close()
+
+	//go func() {
+	//buf := make([]byte, 1024)
+	//for {
+	//n, addr, _ := serverConn.ReadFromUDP(buf)
+	//if len(buf) > 0 {
+	//log.Info(fmt.Sprintf("Received '%s' from %s", string(buf[0:n]), addr))
+	//}
+	//}
+	//}()
+
+	hub := gateway.NewHub()
+	go hub.Run()
+
+	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+		gateway.ServeWs(hub, w, r)
+	})
+	err = http.ListenAndServe(*addr, nil)
+	if err != nil {
+		log.Fatal(err)
 	}
 
+	<-c
+	//serverConn.Close()
 	log.Info(fmt.Sprintf("Disconnecting from: %s:%s", mqttBridgeHostname, mqttBridgePort))
 	client.Disconnect(10)
 }
