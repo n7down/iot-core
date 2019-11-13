@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -64,7 +65,7 @@ func (c *Client) readPump() {
 			}
 			break
 		}
-		log.Info("Message: %s", message)
+		log.Info(fmt.Sprintf("Message: %s", string(message)))
 	}
 }
 

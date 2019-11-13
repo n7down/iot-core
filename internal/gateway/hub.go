@@ -1,5 +1,10 @@
 package gateway
 
+import (
+	"fmt"
+	log "github.com/sirupsen/logrus"
+)
+
 // Hub maintains the set of active clients and broadcasts messages to the
 // clients.
 type Hub struct {
@@ -37,10 +42,12 @@ func (h *Hub) Run() {
 
 			// TODO: manage this by ID
 			h.clients[client] = true
+			log.Info(fmt.Sprintf("Client connected: %v", client))
 		case client := <-h.unregister:
 			if _, ok := h.clients[client]; ok {
 				delete(h.clients, client)
 				close(client.send)
+				log.Info(fmt.Sprintf("Client disconnected: %v", client))
 			}
 			//case message := <-h.broadcast:
 			//for client := range h.clients {

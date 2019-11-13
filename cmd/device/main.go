@@ -31,7 +31,7 @@ func NewDevice(id string, u url.URL) (*Device, error) {
 
 	d := &Device{
 		ID:   id,
-		send: make(chan string),
+		send: make(chan string, 10),
 		conn: c,
 	}
 
@@ -47,10 +47,12 @@ func (d Device) Close() {
 
 func (d Device) Send(action string) {
 	message := fmt.Sprintf("%s %s", d.ID, action)
+	log.Info(fmt.Sprintf("Sending message: %s", message))
 	d.send <- message
 }
 
 func (d Device) Run() {
+	log.Info(fmt.Sprintf("Running: %s", d.ID))
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
@@ -100,6 +102,7 @@ func (d Device) Run() {
 }
 
 func main() {
+	log.SetReportCaller(true)
 	flag.Parse()
 	u := url.URL{Scheme: "ws", Host: *addr, Path: "/ws"}
 
