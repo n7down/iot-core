@@ -25,6 +25,11 @@ func NewHub() *Hub {
 	}
 }
 
+func (h *Hub) Send(deviceID string, message string) {
+	// TODO: find the client by the id
+	// TODO: add message to client.send channel
+}
+
 func (h *Hub) Run() {
 	for {
 		select {

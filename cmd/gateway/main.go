@@ -5,9 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
@@ -38,8 +35,11 @@ func main() {
 	flag.Parse()
 	log.SetReportCaller(true)
 
-	c := make(chan os.Signal)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	//c := make(chan os.Signal)
+	//signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+
+	hub := gateway.NewHub()
+	go hub.Run()
 
 	// onConnect defines the on connect handler which resets backoff variables.
 	var onConnect mqtt.OnConnectHandler = func(client mqtt.Client) {
@@ -49,6 +49,9 @@ func main() {
 	// onMessage defines the message handler for the mqtt client.
 	var onMessage mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
 		log.Info(fmt.Sprintf("Topic: %s Message: %s\n", msg.Topic(), msg.Payload()))
+
+		// TODO: split payload by deviceID and message
+		// TODO: run hub.Send(deviceID, message)
 	}
 
 	// onDisconnect defines the connection lost handler for the mqtt client.
@@ -105,8 +108,6 @@ func main() {
 	}
 	log.Info(fmt.Sprintf("Connected to topic: %s", gatewayTopic))
 
-	time.Sleep(3 * time.Millisecond)
-
 	//serverConn, err := net.ListenUDP("udp", &net.UDPAddr{IP: []byte{0, 0, 0, 0}, Port: udpPort, Zone: ""})
 	//if err != nil {
 	//log.Fatal(fmt.Sprintf("Failed to create UDP connection: %v", err))
@@ -124,19 +125,18 @@ func main() {
 	//}
 	//}()
 
-	hub := gateway.NewHub()
-	go hub.Run()
-
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		gateway.ServeWs(hub, w, r)
 	})
+
+	log.Info(fmt.Sprintf("Running: %s", *addr))
 	err = http.ListenAndServe(*addr, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	<-c
+	//<-c
 	//serverConn.Close()
-	log.Info(fmt.Sprintf("Disconnecting from: %s:%s", mqttBridgeHostname, mqttBridgePort))
-	client.Disconnect(10)
+	//log.Info(fmt.Sprintf("Disconnecting from: %s:%s", mqttBridgeHostname, mqttBridgePort))
+	//client.Disconnect(10)
 }

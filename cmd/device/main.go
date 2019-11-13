@@ -17,18 +17,22 @@ var (
 )
 
 type Device struct {
-	ID string
-	//conn *net.UDPConn
+	ID   string
+	send chan string
+	conn *websocket.Conn
 }
 
-func NewDevice(id string) (*Device, error) {
-	//conn, err := net.DialUDP("udp", nil, &net.UDPAddr{IP: []byte{127, 0, 0, 1}, Port: 10001, Zone: ""})
-	//if err != nil {
-	//return &Device{}, err
-	//}
+func NewDevice(id string, u url.URL) (*Device, error) {
+	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
+	if err != nil {
+		return &Device{}, err
+	}
+	log.Info(fmt.Sprintf("Connected: %s", u.String()))
+
 	d := &Device{
-		ID: id,
-		//conn: conn,
+		ID:   id,
+		send: make(chan string),
+		conn: c,
 	}
 
 	d.Send("detach")
@@ -37,61 +41,41 @@ func NewDevice(id string) (*Device, error) {
 	return d, nil
 }
 
-func (d Device) Send(action string) {
-	//d.conn.Write([]byte(fmt.Sprintf("%s %s", d.ID, action)))
-}
-
 func (d Device) Close() {
-	//d.conn.Close()
+	d.conn.Close()
 }
 
-func main() {
-	flag.Parse()
+func (d Device) Send(action string) {
+	message := fmt.Sprintf("%s %s", d.ID, action)
+	d.send <- message
+}
 
-	d, err := NewDevice("device0")
-	if err != nil {
-		log.Fatal(fmt.Sprintf("Error creating the device: %v", err))
-	}
-	d.Close()
-
+func (d Device) Run() {
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
-
-	u := url.URL{Scheme: "ws", Host: *addr, Path: "/ws"}
-	log.Info("Connecting to %s", u.String())
-
-	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer c.Close()
 
 	done := make(chan struct{})
 
 	go func() {
 		defer close(done)
 		for {
-			_, message, err := c.ReadMessage()
+			_, message, err := d.conn.ReadMessage()
 			if err != nil {
 				log.Error(err)
 				return
 			}
 
-			// TODO: process receive message for a device
 			log.Info(fmt.Sprintf("Message: %s", message))
 		}
 	}()
 
-	ticker := time.NewTicker(time.Second)
-	defer ticker.Stop()
-
-	// TODO: process sending messages for a device
 	for {
 		select {
 		case <-done:
 			return
-		case t := <-ticker.C:
-			err := c.WriteMessage(websocket.TextMessage, []byte(t.String()))
+		case t := <-d.send:
+			log.Info(fmt.Sprintf("Sending: %s", t))
+			err := d.conn.WriteMessage(websocket.TextMessage, []byte(t))
 			if err != nil {
 				log.Error(err)
 				return
@@ -101,7 +85,7 @@ func main() {
 
 			// Cleanly close the connection by sending a close message and then
 			// waiting (with timeout) for the server to close the connection.
-			err := c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+			err := d.conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 			if err != nil {
 				log.Error(err)
 				return
@@ -113,4 +97,15 @@ func main() {
 			return
 		}
 	}
+}
+
+func main() {
+	flag.Parse()
+	u := url.URL{Scheme: "ws", Host: *addr, Path: "/ws"}
+
+	d, err := NewDevice("device0", u)
+	if err != nil {
+		log.Fatal(fmt.Sprintf("Error creating the device: %v", err))
+	}
+	d.Run()
 }
