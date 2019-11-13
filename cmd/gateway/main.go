@@ -38,9 +38,6 @@ func main() {
 	//c := make(chan os.Signal)
 	//signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 
-	hub := gateway.NewHub()
-	go hub.Run()
-
 	// onConnect defines the on connect handler which resets backoff variables.
 	var onConnect mqtt.OnConnectHandler = func(client mqtt.Client) {
 		log.Info(fmt.Sprintf("Client connected %s:%s: %t\n", mqttBridgeHostname, mqttBridgePort, client.IsConnected()))
@@ -107,6 +104,12 @@ func main() {
 		log.Fatal(fmt.Sprintf("Failed to connect to topic: %s", token.Error()))
 	}
 	log.Info(fmt.Sprintf("Connected to topic: %s", gatewayTopic))
+
+	hub := gateway.NewHub()
+	go hub.Run()
+
+	deviceManager := gateway.NewDeviceManager(client, hub)
+	go deviceManager.Run()
 
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		gateway.ServeWs(hub, w, r)

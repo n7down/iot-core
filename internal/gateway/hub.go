@@ -10,58 +10,56 @@ import (
 // clients.
 type Hub struct {
 	// Registered clients.
-	clients map[*Client]bool
-
-	// Inbound messages from the clients.
-	//broadcast chan []byte
+	clients map[string]*Client
 
 	// Register requests from the clients.
 	register chan *Client
 
 	// Unregister requests from clients.
 	unregister chan *Client
+
+	// TODO: when a device gets registered send the DeviceID to this channel to run
+	// TODO: detach, attach and subscribe
+	// TODO: DeviceManager injects Hub and listens to the Created channel to run
+	// TODO: detach, attach and subscribe
+	Created chan string
 }
 
 func NewHub() *Hub {
 	return &Hub{
-		//broadcast:  make(chan []byte),
-		register:   make(chan *Client),
-		unregister: make(chan *Client),
-		clients:    make(map[*Client]bool),
+		register:   make(chan *Client, 10),
+		unregister: make(chan *Client, 10),
+		clients:    make(map[string]*Client),
+		Created:    make(chan string, 1000),
 	}
 }
 
 func (h *Hub) Send(deviceID string, message string) {
-	// TODO: find the client by the id
-	// TODO: add message to client.send channel
+	if _, ok := h.clients[deviceID]; ok {
+		h.clients[deviceID].Send <- []byte(message)
+	}
 }
 
 func (h *Hub) Run() {
 	for {
 		select {
 		case client := <-h.register:
+			//if _, ok := h.clients[client.ID]; ok {
+			//delete(h.clients, client.ID)
+			//close(client.Send)
+			//log.Info(fmt.Sprintf("Client disconnected: %v", client))
+			//}
 
-			// TODO: manage this by ID
-			h.clients[client] = true
-			log.Info(fmt.Sprintf("Client connected: %v", client))
-
-			// TODO: call detach, attach, and subscribe on the DeviceManager
+			h.clients[client.ID] = client
+			log.Info(fmt.Sprintf("Device connected: %v", client))
+			h.Created <- client.ID
 		case client := <-h.unregister:
-			if _, ok := h.clients[client]; ok {
-				delete(h.clients, client)
+			if _, ok := h.clients[client.ID]; ok {
+				delete(h.clients, client.ID)
 				close(client.Send)
-				log.Info(fmt.Sprintf("Client disconnected: %v", client))
-				// TODO: call detach
+				// TODO: call detach?
+				log.Info(fmt.Sprintf("Device disconnected: %v", client))
 			}
-			//case message := <-h.broadcast:
-			//for client := range h.clients {
-			//select {
-			//case client.send <- message:
-			//default:
-			//close(client.send)
-			//delete(h.clients, client)
-			//}
-			//}
 		}
 	}
 }

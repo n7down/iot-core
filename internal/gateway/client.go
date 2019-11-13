@@ -3,6 +3,7 @@ package gateway
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -71,17 +72,12 @@ func (c *Client) readPump() {
 		}
 		log.Info(fmt.Sprintf("Message: %s", string(message)))
 
-		// TODO: send message to the device manager
-		// TODO: if the message is '<device-name> register'
-		// TODO: set the ID of the client and call c.hub.register <- c
-		// TODO: use the map by ID
-
-		// FIXME: test this
-		//words := strings.Fields(string(message))
-		//if words[1] == REGISTER_ACTION {
-		//c.ID = words[0]
-		//c.hub.register <- c
-		//}
+		words := strings.Fields(string(message))
+		if words[1] == REGISTER_ACTION {
+			c.ID = words[0]
+			log.Info(fmt.Sprintf("Registering device: %s", string(c.ID)))
+			c.hub.register <- c
+		}
 	}
 }
 
@@ -142,7 +138,7 @@ func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	client := &Client{hub: hub, conn: conn, Send: make(chan []byte, 256)}
-	client.hub.register <- client
+	//client.hub.register <- client
 
 	// Allow collection of memory referenced by the caller by doing all work in
 	// new goroutines.
