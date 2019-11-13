@@ -108,23 +108,6 @@ func main() {
 	}
 	log.Info(fmt.Sprintf("Connected to topic: %s", gatewayTopic))
 
-	//serverConn, err := net.ListenUDP("udp", &net.UDPAddr{IP: []byte{0, 0, 0, 0}, Port: udpPort, Zone: ""})
-	//if err != nil {
-	//log.Fatal(fmt.Sprintf("Failed to create UDP connection: %v", err))
-	//}
-	//log.Info(fmt.Sprintf("UPD connection port: %d", udpPort))
-	//defer serverConn.Close()
-
-	//go func() {
-	//buf := make([]byte, 1024)
-	//for {
-	//n, addr, _ := serverConn.ReadFromUDP(buf)
-	//if len(buf) > 0 {
-	//log.Info(fmt.Sprintf("Received '%s' from %s", string(buf[0:n]), addr))
-	//}
-	//}
-	//}()
-
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		gateway.ServeWs(hub, w, r)
 	})

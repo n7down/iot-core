@@ -35,9 +35,7 @@ func NewDevice(id string, u url.URL) (*Device, error) {
 		conn: c,
 	}
 
-	d.Send("detach")
-	d.Send("attach")
-	d.Send("subscribe")
+	d.Send("register")
 	return d, nil
 }
 
@@ -47,7 +45,6 @@ func (d Device) Close() {
 
 func (d Device) Send(action string) {
 	message := fmt.Sprintf("%s %s", d.ID, action)
-	log.Info(fmt.Sprintf("Sending message: %s", message))
 	d.send <- message
 }
 
@@ -76,7 +73,6 @@ func (d Device) Run() {
 		case <-done:
 			return
 		case t := <-d.send:
-			log.Info(fmt.Sprintf("Sending: %s", t))
 			err := d.conn.WriteMessage(websocket.TextMessage, []byte(t))
 			if err != nil {
 				log.Error(err)

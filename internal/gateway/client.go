@@ -21,6 +21,8 @@ const (
 
 	// Maximum message size allowed from peer.
 	maxMessageSize = 512
+
+	REGISTER_ACTION = "register"
 )
 
 var (
@@ -41,7 +43,9 @@ type Client struct {
 	conn *websocket.Conn
 
 	// Buffered channel of outbound messages.
-	send chan []byte
+	Send chan []byte
+
+	ID string
 }
 
 // readPump pumps messages from the websocket connection to the hub.
@@ -66,6 +70,18 @@ func (c *Client) readPump() {
 			break
 		}
 		log.Info(fmt.Sprintf("Message: %s", string(message)))
+
+		// TODO: send message to the device manager
+		// TODO: if the message is '<device-name> register'
+		// TODO: set the ID of the client and call c.hub.register <- c
+		// TODO: use the map by ID
+
+		// FIXME: test this
+		//words := strings.Fields(string(message))
+		//if words[1] == REGISTER_ACTION {
+		//c.ID = words[0]
+		//c.hub.register <- c
+		//}
 	}
 }
 
@@ -82,7 +98,7 @@ func (c *Client) writePump() {
 	}()
 	for {
 		select {
-		case message, ok := <-c.send:
+		case message, ok := <-c.Send:
 			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
 				// The hub closed the channel.
@@ -125,7 +141,7 @@ func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		log.Error(err)
 		return
 	}
-	client := &Client{hub: hub, conn: conn, send: make(chan []byte, 256)}
+	client := &Client{hub: hub, conn: conn, Send: make(chan []byte, 256)}
 	client.hub.register <- client
 
 	// Allow collection of memory referenced by the caller by doing all work in

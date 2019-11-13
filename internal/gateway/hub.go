@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"fmt"
+
 	log "github.com/sirupsen/logrus"
 )
 
@@ -43,11 +44,14 @@ func (h *Hub) Run() {
 			// TODO: manage this by ID
 			h.clients[client] = true
 			log.Info(fmt.Sprintf("Client connected: %v", client))
+
+			// TODO: call detach, attach, and subscribe on the DeviceManager
 		case client := <-h.unregister:
 			if _, ok := h.clients[client]; ok {
 				delete(h.clients, client)
-				close(client.send)
+				close(client.Send)
 				log.Info(fmt.Sprintf("Client disconnected: %v", client))
+				// TODO: call detach
 			}
 			//case message := <-h.broadcast:
 			//for client := range h.clients {
