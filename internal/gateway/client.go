@@ -54,7 +54,7 @@ type Client struct {
 // The application runs readPump in a per-connection goroutine. The application
 // ensures that there is at most one reader on a connection by executing all
 // reads from this goroutine.
-func (c *Client) readPump() {
+func (c *Client) readPump(command chan string) {
 	defer func() {
 		c.hub.unregister <- c
 		c.conn.Close()
@@ -77,6 +77,7 @@ func (c *Client) readPump() {
 			c.ID = words[0]
 			log.Info(fmt.Sprintf("Registering device: %s", string(c.ID)))
 			c.hub.register <- c
+			//command <- string(message)
 		}
 	}
 }
@@ -131,7 +132,7 @@ func (c *Client) writePump() {
 }
 
 // serveWs handles websocket requests from the peer.
-func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
+func ServeWs(command chan string, hub *Hub, w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Error(err)
@@ -143,5 +144,5 @@ func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	// Allow collection of memory referenced by the caller by doing all work in
 	// new goroutines.
 	go client.writePump()
-	go client.readPump()
+	go client.readPump(command)
 }

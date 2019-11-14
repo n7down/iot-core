@@ -17,12 +17,6 @@ type Hub struct {
 
 	// Unregister requests from clients.
 	unregister chan *Client
-
-	// TODO: when a device gets registered send the DeviceID to this channel to run
-	// TODO: detach, attach and subscribe
-	// TODO: DeviceManager injects Hub and listens to the Created channel to run
-	// TODO: detach, attach and subscribe
-	Created chan string
 }
 
 func NewHub() *Hub {
@@ -30,7 +24,6 @@ func NewHub() *Hub {
 		register:   make(chan *Client, 10),
 		unregister: make(chan *Client, 10),
 		clients:    make(map[string]*Client),
-		Created:    make(chan string, 1000),
 	}
 }
 
@@ -52,7 +45,6 @@ func (h *Hub) Run() {
 
 			h.clients[client.ID] = client
 			log.Info(fmt.Sprintf("Device connected: %v", client))
-			h.Created <- client.ID
 		case client := <-h.unregister:
 			if _, ok := h.clients[client.ID]; ok {
 				delete(h.clients, client.ID)

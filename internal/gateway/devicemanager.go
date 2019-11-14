@@ -42,12 +42,3 @@ func (d DeviceManager) Subscribe(deviceID string) {
 	}
 	log.Info(fmt.Sprintf("Connected to topic: %s", subscribeTopic))
 }
-
-func (d DeviceManager) Run() {
-	for {
-		select {
-		case deviceID := <-d.hub.Created:
-			d.Detach(deviceID)
-		}
-	}
-}

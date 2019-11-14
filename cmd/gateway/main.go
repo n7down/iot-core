@@ -32,6 +32,8 @@ const (
 )
 
 func main() {
+	command := make(chan string, 1000)
+
 	flag.Parse()
 	log.SetReportCaller(true)
 
@@ -108,11 +110,29 @@ func main() {
 	hub := gateway.NewHub()
 	go hub.Run()
 
-	deviceManager := gateway.NewDeviceManager(client, hub)
-	go deviceManager.Run()
+	//deviceManager := gateway.NewDeviceManager(client, hub)
+	//go deviceManager.Run()
+
+	//var REGISTER_ACTION = "register"
+
+	go func() {
+		select {
+		case c := <-command:
+			//words := strings.Fields(c)
+			//if words[1] == REGISTER_ACTION {
+			//id := words[0]
+			//detachTopic := fmt.Sprintf("/devices/%s/detach", id)
+			//if token := client.Subscribe(detachTopic, 1, nil); token.Wait() && token.Error() != nil {
+			//log.Fatal(fmt.Sprintf("Failed to connect to topic: %s", token.Error()))
+			//}
+			//log.Info(fmt.Sprintf("Connected to topic: %s", detachTopic))
+			//}
+			log.Info(fmt.Sprintf("Received command: %s", c))
+		}
+	}()
 
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		gateway.ServeWs(hub, w, r)
+		gateway.ServeWs(command, hub, w, r)
 	})
 
 	log.Info(fmt.Sprintf("Running: %s", *addr))
