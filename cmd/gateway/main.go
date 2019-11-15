@@ -26,7 +26,7 @@ const (
 	publicKeyFile      = "rsa_cert.pem"
 	algorithm          = "RS256"
 	mqttBridgeHostname = "tls://mqtt.googleapis.com"
-	mqttBridgePort     = "8883"
+	mqttBridgePort     = "443"
 	jwtExpiresMinutes  = 1200
 	protocolVersion    = 4
 )
@@ -115,21 +115,21 @@ func main() {
 
 	//var REGISTER_ACTION = "register"
 
-	go func() {
-		select {
-		case c := <-command:
-			//words := strings.Fields(c)
-			//if words[1] == REGISTER_ACTION {
-			//id := words[0]
-			//detachTopic := fmt.Sprintf("/devices/%s/detach", id)
-			//if token := client.Subscribe(detachTopic, 1, nil); token.Wait() && token.Error() != nil {
-			//log.Fatal(fmt.Sprintf("Failed to connect to topic: %s", token.Error()))
-			//}
-			//log.Info(fmt.Sprintf("Connected to topic: %s", detachTopic))
-			//}
-			log.Info(fmt.Sprintf("Received command: %s", c))
-		}
-	}()
+	//go func() {
+	//select {
+	//case c := <-command:
+	//words := strings.Fields(c)
+	//if words[1] == REGISTER_ACTION {
+	//id := words[0]
+	//detachTopic := fmt.Sprintf("/devices/%s/detach", id)
+	//if token := client.Subscribe(detachTopic, 1, nil); token.Wait() && token.Error() != nil {
+	//log.Fatal(fmt.Sprintf("Failed to connect to topic: %s", token.Error()))
+	//}
+	//log.Info(fmt.Sprintf("Connected to topic: %s", detachTopic))
+	//}
+	//log.Info(fmt.Sprintf("Received command: %s", c))
+	//}
+	//}()
 
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		gateway.ServeWs(command, hub, w, r)
