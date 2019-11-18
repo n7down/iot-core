@@ -137,6 +137,7 @@ func main() {
 				words := strings.Fields(cmd)
 				id := words[0]
 				switch words[1] {
+
 				case DETACH_ACTION:
 
 					// detach
