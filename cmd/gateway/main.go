@@ -28,7 +28,7 @@ const (
 	publicKeyFile      = "rsa_cert.pem"
 	algorithm          = "RS256"
 	mqttBridgeHostname = "tls://mqtt.googleapis.com"
-	mqttBridgePort     = "8883"
+	mqttBridgePort     = "443"
 	jwtExpiresMinutes  = 1200
 	protocolVersion    = 4
 )
@@ -157,7 +157,7 @@ func main() {
 						Authorization: jwt,
 					}
 
-					_, err := json.Marshal(t)
+					payload, err := json.Marshal(t)
 					if err != nil {
 						log.Error(err)
 					}
@@ -165,7 +165,7 @@ func main() {
 					// attach
 					attachTopic := fmt.Sprintf("/devices/%s/attach", id)
 					log.Info(fmt.Sprintf("Attach: %s topic: %s", id, attachTopic))
-					if token := c.Publish(attachTopic, 1, false, ""); token.Wait() && token.Error() != nil {
+					if token := c.Publish(attachTopic, 1, false, payload); token.Wait() && token.Error() != nil {
 						log.Error(fmt.Sprintf("Failed to connect to topic: %s", token.Error()))
 					}
 					log.Info(fmt.Sprintf("Published to topic: %s", attachTopic))
