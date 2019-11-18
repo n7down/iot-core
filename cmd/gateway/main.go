@@ -1,10 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
@@ -29,6 +31,13 @@ const (
 	mqttBridgePort     = "8883"
 	jwtExpiresMinutes  = 1200
 	protocolVersion    = 4
+)
+
+const (
+	REGISTER_ACTION  = "register"
+	DETACH_ACTION    = "detach"
+	ATTACH_ACTION    = "attach"
+	SUBSCRIBE_ACTION = "subscribe"
 )
 
 func main() {
@@ -107,29 +116,76 @@ func main() {
 	}
 	log.Info(fmt.Sprintf("Connected to topic: %s", gatewayTopic))
 
+	errorsTopic := fmt.Sprintf("/devices/%s/errors", gatewayID)
+	if token := client.Subscribe(errorsTopic, 0, nil); token.Wait() && token.Error() != nil {
+		log.Fatal(fmt.Sprintf("Failed to connect to topic: %s", token.Error()))
+	}
+	log.Info(fmt.Sprintf("Connected to topic: %s", errorsTopic))
+
 	hub := gateway.NewHub()
 	go hub.Run()
 
 	//deviceManager := gateway.NewDeviceManager(client, hub)
 	//go deviceManager.Run()
 
-	//var REGISTER_ACTION = "register"
+	go func(c mqtt.Client) {
+		for {
+			select {
+			case cmd := <-command:
 
-	go func() {
-		select {
-		case c := <-command:
-			//words := strings.Fields(c)
-			//if words[1] == REGISTER_ACTION {
-			//id := words[0]
-			//detachTopic := fmt.Sprintf("/devices/%s/detach", id)
-			//if token := client.Subscribe(detachTopic, 1, nil); token.Wait() && token.Error() != nil {
-			//log.Fatal(fmt.Sprintf("Failed to connect to topic: %s", token.Error()))
-			//}
-			//log.Info(fmt.Sprintf("Connected to topic: %s", detachTopic))
-			//}
-			log.Info(fmt.Sprintf("Received command: %s", c))
+				log.Info(fmt.Sprintf("Received command: %s", cmd))
+				words := strings.Fields(cmd)
+				id := words[0]
+				switch words[1] {
+				case DETACH_ACTION:
+
+					// detach
+					detachTopic := fmt.Sprintf("/devices/%s/detach", id)
+					log.Info(fmt.Sprintf("Detach: %s topic: %s", id, detachTopic))
+					if token := c.Publish(detachTopic, 1, false, ""); token.Wait() && token.Error() != nil {
+						log.Error(fmt.Sprintf("Failed to connect to topic: %s", token.Error()))
+					}
+					log.Info(fmt.Sprintf("Published to topic: %s", detachTopic))
+
+				case ATTACH_ACTION:
+
+					type token struct {
+						Authorization string `json:"authorization"`
+					}
+
+					t := &token{
+						Authorization: jwt,
+					}
+
+					_, err := json.Marshal(t)
+					if err != nil {
+						log.Error(err)
+					}
+
+					// attach
+					attachTopic := fmt.Sprintf("/devices/%s/attach", id)
+					log.Info(fmt.Sprintf("Attach: %s topic: %s", id, attachTopic))
+					if token := c.Publish(attachTopic, 1, false, ""); token.Wait() && token.Error() != nil {
+						log.Error(fmt.Sprintf("Failed to connect to topic: %s", token.Error()))
+					}
+					log.Info(fmt.Sprintf("Published to topic: %s", attachTopic))
+
+				case SUBSCRIBE_ACTION:
+
+					// subscribe
+					subscribeTopic := fmt.Sprintf("/devices/%s/commands/#", id)
+					log.Info(fmt.Sprintf("Subscribe: %s topic: %s", id, subscribeTopic))
+					if token := c.Subscribe(subscribeTopic, 0, nil); token.Wait() && token.Error() != nil {
+						log.Error(fmt.Sprintf("Failed to connect to topic: %s", token.Error()))
+					}
+					log.Info(fmt.Sprintf("Connected to topic: %s", subscribeTopic))
+
+				default:
+					log.Info(fmt.Sprintf("Unknown action: %s", words[1]))
+				}
+			}
 		}
-	}()
+	}(client)
 
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		gateway.ServeWs(command, hub, w, r)

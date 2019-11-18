@@ -22,7 +22,9 @@ const (
 
 	// Maximum message size allowed from peer.
 	maxMessageSize = 512
+)
 
+const (
 	REGISTER_ACTION = "register"
 )
 
@@ -77,7 +79,9 @@ func (c *Client) readPump(command chan string) {
 			c.ID = words[0]
 			log.Info(fmt.Sprintf("Registering device: %s", string(c.ID)))
 			c.hub.register <- c
-			//command <- string(message)
+			command <- fmt.Sprintf("%s detach", c.ID)
+			command <- fmt.Sprintf("%s attach", c.ID)
+			command <- fmt.Sprintf("%s subscribe", c.ID)
 		}
 	}
 }
