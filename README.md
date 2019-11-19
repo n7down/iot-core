@@ -12,6 +12,9 @@
  - [MQTT Bridge](https://cloud.google.com/iot/docs/how-tos/gateways/mqtt-bridge)
 3. [x] Send and receive command from IOT core to device
  - [Commands](https://cloud.google.com/iot/docs/how-tos/commands)
+4. [ ] Publish events from devices to one topic/subscription
+ - [Create a topic and subscription](https://codelabs.developers.google.com/codelabs/cloud-iot-core-gateways/index.html#1)
+ - [Publishing over the MQTT Bridge](https://cloud.google.com/iot/docs/how-tos/mqtt-bridge)
 
 ## Notes
 - [Cloud IOT Core Gateways](https://codelabs.developers.google.com/codelabs/cloud-iot-core-gateways/index.html#0)
