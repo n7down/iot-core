@@ -34,10 +34,10 @@ const (
 )
 
 const (
-	REGISTER_ACTION  = "register"
 	DETACH_ACTION    = "detach"
 	ATTACH_ACTION    = "attach"
 	SUBSCRIBE_ACTION = "subscribe"
+	EVENT_ACTION     = "event"
 )
 
 func main() {
@@ -134,9 +134,11 @@ func main() {
 			case cmd := <-command:
 
 				log.Info(fmt.Sprintf("Received command: %s", cmd))
-				words := strings.Fields(cmd)
-				id := words[0]
-				switch words[1] {
+				command := strings.Fields(cmd)
+				id := command[0]
+				action := command[1]
+
+				switch action {
 
 				case DETACH_ACTION:
 
@@ -181,8 +183,14 @@ func main() {
 					}
 					log.Info(fmt.Sprintf("Connected to topic: %s", subscribeTopic))
 
+				case EVENT_ACTION:
+
+					// event
+					data := command[2:]
+					log.Info(fmt.Sprintf("Event action from %s: %s", id, data))
+
 				default:
-					log.Info(fmt.Sprintf("Unknown action: %s", words[1]))
+					log.Info(fmt.Sprintf("Unknown action: %s", command[1]))
 				}
 			}
 		}

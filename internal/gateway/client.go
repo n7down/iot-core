@@ -26,6 +26,7 @@ const (
 
 const (
 	REGISTER_ACTION = "register"
+	EVENT_ACTION    = "event"
 )
 
 var (
@@ -74,14 +75,22 @@ func (c *Client) readPump(command chan string) {
 		}
 		log.Info(fmt.Sprintf("Message: %s", string(message)))
 
-		words := strings.Fields(string(message))
-		if words[1] == REGISTER_ACTION {
-			c.ID = words[0]
+		cmd := strings.Fields(string(message))
+		switch cmd[1] {
+
+		case REGISTER_ACTION:
+			c.ID = cmd[0]
 			log.Info(fmt.Sprintf("Registering device: %s", string(c.ID)))
 			c.hub.register <- c
 			command <- fmt.Sprintf("%s detach", c.ID)
 			command <- fmt.Sprintf("%s attach", c.ID)
 			command <- fmt.Sprintf("%s subscribe", c.ID)
+
+		case EVENT_ACTION:
+			command <- string(message)
+
+		default:
+			log.Info(fmt.Sprintf("Unknown action: %s for %s", cmd[1], c.ID))
 		}
 	}
 }

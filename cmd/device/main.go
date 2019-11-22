@@ -35,7 +35,7 @@ func NewDevice(id string, u url.URL) (*Device, error) {
 		conn: c,
 	}
 
-	d.Send("register")
+	d.Send("register", "")
 	return d, nil
 }
 
@@ -43,8 +43,8 @@ func (d Device) Close() {
 	d.conn.Close()
 }
 
-func (d Device) Send(action string) {
-	message := fmt.Sprintf("%s %s", d.ID, action)
+func (d Device) Send(action string, data string) {
+	message := fmt.Sprintf("%s %s %s", d.ID, action, data)
 	d.send <- message
 }
 
@@ -55,6 +55,20 @@ func (d Device) Run() {
 
 	done := make(chan struct{})
 
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+
+	// ticker
+	go func() {
+		for {
+			select {
+			case t := <-ticker.C:
+				d.Send("event", t.String())
+			}
+		}
+	}()
+
+	// read
 	go func() {
 		defer close(done)
 		for {
@@ -68,6 +82,7 @@ func (d Device) Run() {
 		}
 	}()
 
+	// write
 	for {
 		select {
 		case <-done:
