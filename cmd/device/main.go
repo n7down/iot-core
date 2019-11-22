@@ -13,7 +13,8 @@ import (
 )
 
 var (
-	addr = flag.String("addr", "localhost:8080", "http service address")
+	addr     = flag.String("addr", "localhost:8080", "http service address")
+	deviceID = flag.String("id", "device0", "device id")
 )
 
 type Device struct {
@@ -117,7 +118,7 @@ func main() {
 	flag.Parse()
 	u := url.URL{Scheme: "ws", Host: *addr, Path: "/ws"}
 
-	d, err := NewDevice("device0", u)
+	d, err := NewDevice(*deviceID, u)
 	if err != nil {
 		log.Fatal(fmt.Sprintf("Error creating the device: %v", err))
 	}

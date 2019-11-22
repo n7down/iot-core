@@ -186,7 +186,12 @@ func main() {
 				case EVENT_ACTION:
 
 					// event
-					data := command[2:]
+					data := strings.Join(command[2:], " ")
+					log.Info(fmt.Sprintf("Publishing event action from %s: %s", id, data))
+					attachTopic := fmt.Sprintf("/devices/%s/events", id)
+					if token := c.Publish(attachTopic, 1, false, data); token.Wait() && token.Error() != nil {
+						log.Error(fmt.Sprintf("Failed to connect to topic: %s", token.Error()))
+					}
 					log.Info(fmt.Sprintf("Event action from %s: %s", id, data))
 
 				default:
