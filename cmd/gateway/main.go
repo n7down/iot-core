@@ -16,13 +16,13 @@ import (
 )
 
 var (
-	addr = flag.String("addr", ":8080", "http service address")
+	addr      = flag.String("addr", ":8080", "http service address")
+	gatewayID = flag.String("id", "gateway0", "gateway id")
 )
 
 const (
 	projectID          = "iota-3345"
 	registryID         = "demo-registry"
-	gatewayID          = "demo-gateway0"
 	cloudRegion        = "us-central1"
 	privateKeyFile     = "rsa_private.pem"
 	publicKeyFile      = "rsa_cert.pem"
