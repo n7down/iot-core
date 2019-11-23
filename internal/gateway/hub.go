@@ -30,6 +30,8 @@ func NewHub() *Hub {
 func (h *Hub) Send(deviceID string, message string) {
 	if _, ok := h.clients[deviceID]; ok {
 		h.clients[deviceID].Send <- []byte(message)
+	} else {
+		log.Error(fmt.Sprintf("Device %s is not connected", deviceID))
 	}
 }
 

@@ -56,7 +56,7 @@ func (d Device) Run() {
 
 	done := make(chan struct{})
 
-	ticker := time.NewTicker(time.Second)
+	ticker := time.NewTicker(time.Second * 30)
 	defer ticker.Stop()
 
 	// ticker

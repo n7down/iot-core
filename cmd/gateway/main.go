@@ -41,13 +41,15 @@ const (
 )
 
 func main() {
-	command := make(chan string, 1000)
 
 	flag.Parse()
+
 	log.SetReportCaller(true)
 
-	//c := make(chan os.Signal)
-	//signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	command := make(chan string, 1000)
+
+	hub := gateway.NewHub()
+	go hub.Run()
 
 	// onConnect defines the on connect handler which resets backoff variables.
 	var onConnect mqtt.OnConnectHandler = func(client mqtt.Client) {
@@ -56,10 +58,25 @@ func main() {
 
 	// onMessage defines the message handler for the mqtt client.
 	var onMessage mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
-		log.Info(fmt.Sprintf("Topic: %s Message: %s\n", msg.Topic(), msg.Payload()))
+		topic := msg.Topic()
+		payload := string(msg.Payload())
+		log.Info(fmt.Sprintf("Topic: %s Message: %s\n", topic, payload))
 
-		// TODO: split payload by deviceID and message
-		// TODO: run hub.Send(deviceID, message)
+		// FIXME: use grouping from regex to get the topicDeviceID
+		s := strings.Split(topic, "/")
+		topicDeviceID := s[2]
+
+		// to send to a device on a gateway - send 'deviceID message' on the gateway commands
+		// to send to the device just send the command on deviceID commands
+		switch topicDeviceID {
+		case *gatewayID:
+			m := strings.Split(payload, " ")
+			deviceID := m[0]
+			message := strings.Join(m[1:], " ")
+			hub.Send(deviceID, message)
+		default:
+			hub.Send(topicDeviceID, payload)
+		}
 	}
 
 	// onDisconnect defines the connection lost handler for the mqtt client.
@@ -90,7 +107,8 @@ func main() {
 		log.Fatal(err)
 	}
 
-	clientID := fmt.Sprintf("projects/%s/locations/%s/registries/%s/devices/%s", projectID, cloudRegion, registryID, gatewayID)
+	clientID := fmt.Sprintf("projects/%s/locations/%s/registries/%s/devices/%s", projectID, cloudRegion, registryID, *gatewayID)
+	log.Info(fmt.Sprintf("Connecting to: %s", clientID))
 
 	opts := mqtt.NewClientOptions()
 	opts.AddBroker(fmt.Sprintf("%s:%s", mqttBridgeHostname, mqttBridgePort))
@@ -110,23 +128,17 @@ func main() {
 
 	time.Sleep(3 * time.Second)
 
-	gatewayTopic := fmt.Sprintf("/devices/%s/commands/#", gatewayID)
+	gatewayTopic := fmt.Sprintf("/devices/%s/commands/#", *gatewayID)
 	if token := client.Subscribe(gatewayTopic, 0, nil); token.Wait() && token.Error() != nil {
 		log.Fatal(fmt.Sprintf("Failed to connect to topic: %s", token.Error()))
 	}
 	log.Info(fmt.Sprintf("Connected to topic: %s", gatewayTopic))
 
-	errorsTopic := fmt.Sprintf("/devices/%s/errors", gatewayID)
+	errorsTopic := fmt.Sprintf("/devices/%s/errors", *gatewayID)
 	if token := client.Subscribe(errorsTopic, 0, nil); token.Wait() && token.Error() != nil {
 		log.Fatal(fmt.Sprintf("Failed to connect to topic: %s", token.Error()))
 	}
 	log.Info(fmt.Sprintf("Connected to topic: %s", errorsTopic))
-
-	hub := gateway.NewHub()
-	go hub.Run()
-
-	//deviceManager := gateway.NewDeviceManager(client, hub)
-	//go deviceManager.Run()
 
 	go func(c mqtt.Client) {
 		for {
@@ -187,12 +199,11 @@ func main() {
 
 					// event
 					data := strings.Join(command[2:], " ")
-					log.Info(fmt.Sprintf("Publishing event action from %s: %s", id, data))
 					attachTopic := fmt.Sprintf("/devices/%s/events", id)
 					if token := c.Publish(attachTopic, 1, false, data); token.Wait() && token.Error() != nil {
 						log.Error(fmt.Sprintf("Failed to connect to topic: %s", token.Error()))
 					}
-					log.Info(fmt.Sprintf("Event action from %s: %s", id, data))
+					log.Info(fmt.Sprintf("Sent event action from %s: %s", id, data))
 
 				default:
 					log.Info(fmt.Sprintf("Unknown action: %s", command[1]))
@@ -210,9 +221,4 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	//<-c
-	//serverConn.Close()
-	//log.Info(fmt.Sprintf("Disconnecting from: %s:%s", mqttBridgeHostname, mqttBridgePort))
-	//client.Disconnect(10)
 }
