@@ -5,7 +5,7 @@
 2. Create the registry topic with `gcloud pubsub topics create demo-registry --project=<PROJECT_ID>`
 3. Create the registry subscription with `gcloud pubsub subscriptions create demo-registry-sub --topic=demo-registry --project=<PROJECT_ID>`
 4. Create a registry with `gcloud iot registries create demo-registry0 --region=us-central1 --event-notification-config=topic=demo-registry --project=<PROJECT_ID>`
-5. Create a gateway with - `gcloud iot devices create demo-gateway0 --region=us-central1 --registry=demo-registry --auth-method=device-auth-token-only --device-type=gateway --public-key path=rsa_cert.pem,type=rsa-x509-pem`
+5. Create a gateway with - `gcloud iot devices create gateway0 --region=us-central1 --registry=demo-registry --auth-method=device-auth-token-only --device-type=gateway --public-key path=rsa_cert.pem,type=rsa-x509-pem`
 6. Create a device0 with `gcloud iot devices create device0 --region=us-central1 --registry=demo-registry --device-type=non-gateway --project=<PROJECT_ID> --public-key path=rsa_cert.pem,type=rsa-x509-pem`
 7. Create a device1 with `gcloud iot devices create device1 --region=us-central1 --registry=demo-registry --device-type=non-gateway --project=<PROJECT_ID> --public-key path=rsa_cert.pem,type=rsa-x509-pem`
 8. Run the gateway with `go run cmd/gateway/main.go`
