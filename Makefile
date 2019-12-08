@@ -1,22 +1,20 @@
-SERVICENAME := $(shell basename "$(PWD)")
-PROJECTNAMEDEV="noke-smart-entry-dev"
-PROJECTNAMEPROD="noke-smart-entry"
+SERVICENAME="device-manager" 
+PROJECTNAME="iota-3345"
 
-DEVYAML="cmd/app/dev.yaml"
-PRODYAML="cmd/app/app.yaml"
+GCPYAML="cmd/devicemanager/app.yaml"
 
 VERSION := $(shell git describe --tags)
 BUILD := $(shell git rev-parse --short HEAD)
 TIMESTAMP := $(shell date "+%Y%m%d-%H%M%S")
 VERSIONGCP := $(shell echo $(VERSION) | tr '.' '-' | tr ':' '-')
 
-LDFLAGS=-ldflags "-X=main.DeviceManagerVersion=$(VERSION) -X=main.DeviceManagerBuild=$(BUILD) -X=main.BuildTimestamp=$(TIMESTAMP)"
+LDFLAGS=-ldflags "-X=main.DeviceManagerVersion=$(VERSION) -X=main.DeviceManagerBuild=$(BUILD)"
 MAKEFLAGS += --silent
 PID := /tmp/.$(SERVICENAME).pid
 
 GOBASE=$(shell pwd)
 GOBIN=$(GOBASE)/bin
-GOFILES=$(GOPATH)/src/bitbucket.org/noke/device-manager/cmd/app/*.go
+GOFILES=$(GOPATH)/src/github.com/n7down/iot-core/cmd/devicemanager/*.go
 GOFILESLIST=$(shell find . -name '*.go')
 
 .PHONY: install
@@ -31,12 +29,6 @@ build: clean
 	CGO_ENABLED=0 GOBIN=$(GOBIN) go build $(LDFLAGS) -o $(GOBIN)/$(SERVICENAME) $(GOFILES)
 	echo "done"
 					
-.PHONY: build-amd
-build-amd: clean
-	echo "building... \c"
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOBIN=$(GOBIN) go build $(LDFLAGS) -o $(GOBIN)/$(SERVICENAME) $(GOFILES)
-	echo "done"
-
 .PHONY: generate
 generate:
 	echo "generating dependency files... \c"
@@ -127,7 +119,7 @@ deploy-dev-promote: docker-build docker-push docker-deploy-promote
 .PHONY: deploy-dev-stanard-promote
 deploy-dev-standard-promote:
 	echo "deploying to gcloud..."
-	gcloud app deploy "$(DEVYAML)" -v "$(VERSIONGCP)" --project="$(PROJECTNAMEDEV)" --stop-previous-version -q 
+	gcloud app deploy "$(GCPYAML)" -v "$(VERSIONGCP)" --project="$(PROJECTNAME)" --stop-previous-version -q 
 	echo "done"
 
 .PHONY: docker-build-prod

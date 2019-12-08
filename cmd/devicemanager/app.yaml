@@ -1,0 +1,8 @@
+service: default
+runtime: go111
+
+env_variables:
+    PROJECT_ID: 'iota-3345'
+    REGISTRY_ID: 'demo-registry'
+    CLOUD_REGION: 'us-central1'
+

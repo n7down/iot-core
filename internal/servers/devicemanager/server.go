@@ -8,6 +8,10 @@ import (
 
 type DeviceManagerServer struct {
 	db *DeviceManagerDB
+
+	projectID   string
+	registryID  string
+	cloudRegion string
 }
 
 func NewDeviceManagerServer() (*DeviceManagerServer, error) {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"net"
 
@@ -21,9 +22,23 @@ const (
 	cloudRegion = "us-central1"
 )
 
+var (
+	DeviceManagerVersion string
+	DeviceManagerBuild   string
+
+	showVersions = flag.Bool("v", false, "show versions")
+)
+
 // TODO: gateways talk to this service to see if devices are created
 
 func main() {
+	flag.Parse()
+
+	if *showVersions {
+		fmt.Println(fmt.Sprintf("device-manager version: %s build: %s", DeviceManagerVersion, DeviceManagerBuild))
+		return
+	}
+
 	log.SetReportCaller(true)
 
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", port))
