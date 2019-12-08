@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package devicemanager_pb;
+
+message DeviceCreateRequest {
+	string DeviceID = 1;
+}
+
+message DeviceCreateResponse {
+	string DeviceID = 1;
+}
+
+message GatewayCreateRequest {
+	string GatewayID = 1;
+}
+
+message GatewayCreateResponse {
+	string GatewayID = 1;
+}
+
+service DeviceManagerService {
+	rpc DeviceCreate (DeviceCreateRequest) returns (DeviceCreateResponse);
+	rpc GatewayCreate (GatewayCreateRequest) returns (GatewayCreateResponse);
+}
