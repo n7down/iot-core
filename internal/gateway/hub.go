@@ -17,13 +17,16 @@ type Hub struct {
 
 	// Unregister requests from clients.
 	unregister chan *Client
+
+	command chan string
 }
 
-func NewHub() *Hub {
+func NewHub(c chan string) *Hub {
 	return &Hub{
 		register:   make(chan *Client, 10),
 		unregister: make(chan *Client, 10),
 		clients:    make(map[string]*Client),
+		command:    c,
 	}
 }
 
@@ -51,7 +54,13 @@ func (h *Hub) Run() {
 			if _, ok := h.clients[client.ID]; ok {
 				delete(h.clients, client.ID)
 				close(client.Send)
-				// TODO: call detach?
+
+				// TODO: call detach
+				h.command <- fmt.Sprintf("%s detach", client.ID)
+
+				// TODO: call unsubscribe
+				//h.command <- fmt.Sprintf("%s unsubscribe", client.ID)
+
 				log.Info(fmt.Sprintf("Device disconnected: %v", client))
 			}
 		}
